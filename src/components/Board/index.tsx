@@ -9,7 +9,7 @@ interface BoardProps {
   onMove: (row: number, col: number) => void
 }
 
-export function Board({ grid, currentPlayer, winner, onMove }: BoardProps) {
+export function Board({ grid, winner, onMove }: BoardProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const { setupCanvas, handleClick } = useCanvas({ grid, onMove })
 

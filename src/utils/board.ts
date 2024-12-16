@@ -186,7 +186,7 @@ function getLine(
 ): string {
   let line = ''
   const [dr1, dc1] = dir[0]
-  const [dr2, dc2] = dir[1]
+  // const [dr2, dc2] = dir[1]
 
   // 向一个方向延伸
   for (let step = -4; step <= 4; step++) {

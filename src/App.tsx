@@ -1,4 +1,5 @@
 import { Analytics } from "@vercel/analytics/react"
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 import { Board } from './components/Board'
 import { Controls } from './components/Controls'
@@ -34,6 +35,7 @@ export default function App() {
       </div>
 
       <Analytics />
+      <SpeedInsights />
     </div>
   )
 } 
