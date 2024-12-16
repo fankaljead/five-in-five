@@ -1,52 +1,12 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <meta
-      name="viewport"
-      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"
-    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>五子棋</title>
-    <link
-      rel="stylesheet"
-      href="css/style.css"
-    />
   </head>
   <body>
-    <div class="game-container">
-      <div class="game-header">
-        <h1 class="game-title">五子棋</h1>
-        <div class="game-mode">
-          <button
-            class="mode-btn active"
-            data-mode="pvp"
-          >
-            双人对战
-          </button>
-          <button
-            class="mode-btn"
-            data-mode="pve"
-          >
-            人机对战
-          </button>
-        </div>
-        <div class="game-info">
-          <div class="timer">00:00</div>
-          <div class="game-status">轮到黑子下</div>
-        </div>
-      </div>
-      <div class="board-container">
-        <canvas id="gameBoard"></canvas>
-      </div>
-      <div class="controls">
-        <button id="restartBtn">重新开始</button>
-        <button id="undoBtn" class="secondary">悔棋</button>
-      </div>
-    </div>
-
-    <script
-      src="js/game.js"
-      type="module"
-    ></script>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
