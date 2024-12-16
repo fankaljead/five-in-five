@@ -7,23 +7,62 @@ const DIRECTIONS = [
   [[1, -1], [-1, 1]], // 反对角线
 ]
 
-// 棋型评分
+// 更细致的棋型评分
 const PATTERNS = {
-  FIVE: 100000,    // 五连
-  OPEN_FOUR: 50000,   // 活四
-  DOUBLE_THREE: 10000, // 双活三
-  BLOCKED_FOUR: 5000, // 冲四
-  OPEN_THREE: 3000,   // 活三
-  BLOCKED_THREE: 1000, // 眠三
-  OPEN_TWO: 500,      // 活二
-  BLOCKED_TWO: 100,   // 眠二
+  FIVE: 1000000,        // 五连
+  OPEN_FOUR: 100000,    // 活四
+  DOUBLE_FOUR: 50000,   // 双四
+  BLOCKED_FOUR: 10000,  // 冲四
+  DOUBLE_THREE: 8000,   // 双活三
+  OPEN_THREE: 5000,     // 活三
+  BLOCKED_THREE: 1000,  // 眠三
+  DOUBLE_TWO: 500,      // 双活二
+  OPEN_TWO: 200,       // 活二
+  BLOCKED_TWO: 50,     // 眠二
 }
+
+// 位置权重矩阵，中心位置权重更高
+const POSITION_WEIGHTS = [
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+  [0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0],
+  [0, 1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 1, 0],
+  [0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1, 0],
+  [0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 4, 3, 2, 1, 0],
+  [0, 1, 2, 3, 4, 5, 6, 6, 6, 5, 4, 3, 2, 1, 0],
+  [0, 1, 2, 3, 4, 5, 6, 7, 6, 5, 4, 3, 2, 1, 0],
+  [0, 1, 2, 3, 4, 5, 6, 6, 6, 5, 4, 3, 2, 1, 0],
+  [0, 1, 2, 3, 4, 5, 5, 5, 5, 5, 4, 3, 2, 1, 0],
+  [0, 1, 2, 3, 4, 4, 4, 4, 4, 4, 4, 3, 2, 1, 0],
+  [0, 1, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 1, 0],
+  [0, 1, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 1, 0],
+  [0, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0],
+  [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+]
 
 export function getAIMove(grid: Grid): [number, number] {
-  return minimax(grid, 3, -Infinity, Infinity, true)[1]
+  // 第一步下在中心位置
+  if (isEmptyBoard(grid)) {
+    const center = Math.floor(grid.length / 2)
+    return [center, center]
+  }
+
+  // 使用迭代加深搜索
+  const depth = grid.length * grid.length - countPieces(grid) > 10 ? 4 : 6
+  return minimax(grid, depth, -Infinity, Infinity, true)[1]
 }
 
-// 极大极小算法 + Alpha-Beta 剪枝
+function isEmptyBoard(grid: Grid): boolean {
+  return grid.every(row => row.every(cell => cell === null))
+}
+
+function countPieces(grid: Grid): number {
+  return grid.reduce((count, row) => 
+    count + row.reduce((rowCount, cell) => 
+      rowCount + (cell !== null ? 1 : 0), 0), 0)
+}
+
+// 优化的极大极小算法
 function minimax(
   grid: Grid,
   depth: number,
@@ -31,11 +70,17 @@ function minimax(
   beta: number,
   isMaximizing: boolean
 ): [number, [number, number]] {
+  // 快速胜负判断
+  const quickEval = quickWinCheck(grid)
+  if (quickEval !== null) {
+    return [quickEval * (isMaximizing ? -1 : 1), [-1, -1]]
+  }
+
   if (depth === 0) {
     return [evaluateBoard(grid), [-1, -1]]
   }
 
-  const moves = getValidMoves(grid)
+  const moves = getOrderedMoves(grid)
   if (moves.length === 0) {
     return [evaluateBoard(grid), [-1, -1]]
   }
@@ -75,18 +120,32 @@ function minimax(
   }
 }
 
-// 获取所有可能的移动
-function getValidMoves(grid: Grid): [number, number][] {
-  const moves: [number, number][] = []
+// 快速胜负检查
+function quickWinCheck(grid: Grid): number | null {
+  // 检查是否有五连
+  for (let i = 0; i < grid.length; i++) {
+    for (let j = 0; j < grid[0].length; j++) {
+      if (!grid[i][j]) continue
+      if (checkWin(grid, i, j, grid[i][j])) {
+        return grid[i][j] === 'white' ? Infinity : -Infinity
+      }
+    }
+  }
+  return null
+}
+
+// 获取排序后的可能移动
+function getOrderedMoves(grid: Grid): [number, number][] {
+  const moves: Array<[number, number, number]> = [] // [row, col, score]
   const visited = new Set<string>()
 
   // 只考虑已有棋子周围的空位
   for (let i = 0; i < grid.length; i++) {
     for (let j = 0; j < grid[i].length; j++) {
       if (grid[i][j]) {
-        // 检查周围8个方向
-        for (let di = -1; di <= 1; di++) {
-          for (let dj = -1; dj <= 1; dj++) {
+        // 检查周围两格内的位置
+        for (let di = -2; di <= 2; di++) {
+          for (let dj = -2; dj <= 2; dj++) {
             const ni = i + di
             const nj = j + dj
             const key = `${ni},${nj}`
@@ -97,7 +156,9 @@ function getValidMoves(grid: Grid): [number, number][] {
               grid[ni][nj] === null &&
               !visited.has(key)
             ) {
-              moves.push([ni, nj])
+              // 计算位置分数
+              const score = evaluatePosition(grid, ni, nj)
+              moves.push([ni, nj, score])
               visited.add(key)
             }
           }
@@ -106,44 +167,139 @@ function getValidMoves(grid: Grid): [number, number][] {
     }
   }
 
-  // 如果是空棋盘，返回中心点
-  if (moves.length === 0) {
-    const center = Math.floor(grid.length / 2)
-    return [[center, center]]
-  }
-
+  // 按分数排序
   return moves
+    .sort((a, b) => b[2] - a[2])
+    .map(([row, col]) => [row, col])
+}
+
+// 评估单个位置的价值
+function evaluatePosition(grid: Grid, row: number, col: number): number {
+  let score = POSITION_WEIGHTS[row][col] * 10
+
+  // 模拟白棋落子
+  grid[row][col] = 'white'
+  score += evaluatePatterns(grid, row, col, 'white')
+  
+  // 模拟黑棋落子
+  grid[row][col] = 'black'
+  score += evaluatePatterns(grid, row, col, 'black') * 0.9
+  
+  grid[row][col] = null
+  return score
 }
 
 // 评估整个棋盘局势
 function evaluateBoard(grid: Grid): number {
   let score = 0
   
-  // 评估白子（AI）
-  const whiteScore = evaluateForPlayer(grid, 'white')
-  // 评估黑子（玩家）
-  const blackScore = evaluateForPlayer(grid, 'black')
-  
-  // AI 得分减去玩家得分
-  score = whiteScore - blackScore * 1.1 // 稍微偏向防守
+  // 评估每个位置
+  for (let i = 0; i < grid.length; i++) {
+    for (let j = 0; j < grid[0].length; j++) {
+      if (grid[i][j] === 'white') {
+        score += evaluatePatterns(grid, i, j, 'white')
+        score += POSITION_WEIGHTS[i][j] * 10
+      } else if (grid[i][j] === 'black') {
+        score -= evaluatePatterns(grid, i, j, 'black') * 0.9
+        score -= POSITION_WEIGHTS[i][j] * 8
+      }
+    }
+  }
 
   return score
 }
 
-// 评估某个玩家的局势
+// 评估某个位置的棋型
+function evaluatePatterns(grid: Grid, row: number, col: number, player: Player): number {
+  let score = 0
+  
+  DIRECTIONS.forEach(dir => {
+    const line = getLine(grid, row, col, dir, player)
+    const patterns = findPatterns(line)
+    
+    score += patterns.five * PATTERNS.FIVE
+    score += patterns.openFour * PATTERNS.OPEN_FOUR
+    score += patterns.doubleFour * PATTERNS.DOUBLE_FOUR
+    score += patterns.blockedFour * PATTERNS.BLOCKED_FOUR
+    score += patterns.doubleThree * PATTERNS.DOUBLE_THREE
+    score += patterns.openThree * PATTERNS.OPEN_THREE
+    score += patterns.blockedThree * PATTERNS.BLOCKED_THREE
+    score += patterns.doubleTwo * PATTERNS.DOUBLE_TWO
+    score += patterns.openTwo * PATTERNS.OPEN_TWO
+    score += patterns.blockedTwo * PATTERNS.BLOCKED_TWO
+  })
+
+  return score
+}
+
+// 修改棋型识别函数，增加更多进攻性棋型
+function updatePatterns(patterns: any, line: string) {
+  // 五连
+  if (line.includes('11111')) patterns.five++
+  
+  // 活四
+  if (line.includes('011110')) patterns.openFour++
+  
+  // 双四
+  if (
+    (line.includes('011110') && line.includes('11110')) ||
+    (line.includes('011110') && line.includes('01111')) ||
+    (countPattern(line, '11110') >= 2) ||
+    (countPattern(line, '01111') >= 2)
+  ) patterns.doubleFour++
+  
+  // 冲四
+  if (
+    line.includes('01111') || line.includes('11110') ||
+    line.includes('11011') || line.includes('10111') ||
+    line.includes('11101')
+  ) patterns.blockedFour++
+  
+  // 活三
+  if (line.includes('01110')) patterns.openThree++
+  if (countPattern(line, '01110') >= 2) patterns.doubleThree++
+  
+  // 眠三
+  if (
+    line.includes('11100') || line.includes('00111') ||
+    line.includes('11010') || line.includes('01011') ||
+    line.includes('10110') || line.includes('01101')
+  ) patterns.blockedThree++
+  
+  // 活二
+  if (
+    line.includes('01100') || line.includes('00110') ||
+    line.includes('011010') || line.includes('010110')
+  ) patterns.openTwo++
+  
+  // 眠二
+  if (
+    line.includes('11000') || line.includes('00011') ||
+    line.includes('10100') || line.includes('00101') ||
+    line.includes('10010')
+  ) patterns.blockedTwo++
+}
+
+// 修改评分计算
 function evaluateForPlayer(grid: Grid, player: Player): number {
   let score = 0
   const patterns = findPatterns(grid, player)
   
-  // 根据不同棋型计算分数
+  // 调整评分权重
   score += patterns.five * PATTERNS.FIVE
   score += patterns.openFour * PATTERNS.OPEN_FOUR
-  score += patterns.blockedFour * PATTERNS.BLOCKED_FOUR
+  score += patterns.doubleFour * PATTERNS.DOUBLE_FOUR
   score += patterns.doubleThree * PATTERNS.DOUBLE_THREE
+  score += patterns.blockedFour * PATTERNS.BLOCKED_FOUR
   score += patterns.openThree * PATTERNS.OPEN_THREE
   score += patterns.blockedThree * PATTERNS.BLOCKED_THREE
   score += patterns.openTwo * PATTERNS.OPEN_TWO
   score += patterns.blockedTwo * PATTERNS.BLOCKED_TWO
+
+  // 连续棋型加分
+  if (patterns.openFour > 0 && patterns.openThree > 0) score *= 1.5
+  if (patterns.openThree >= 2) score *= 1.5
+  if (patterns.blockedFour >= 2) score *= 1.3
 
   return score
 }
@@ -154,6 +310,7 @@ function findPatterns(grid: Grid, player: Player) {
     five: 0,
     openFour: 0,
     blockedFour: 0,
+    doubleFour: 0,
     doubleThree: 0,
     openThree: 0,
     blockedThree: 0,
@@ -200,41 +357,6 @@ function getLine(
   }
 
   return line
-}
-
-// 更新棋型统计
-function updatePatterns(patterns: any, line: string) {
-  // 五连
-  if (line.includes('11111')) patterns.five++
-  
-  // 活四
-  if (line.includes('011110')) patterns.openFour++
-  
-  // 冲四
-  if (
-    line.includes('01111') || line.includes('11110') ||
-    line.includes('11011') || line.includes('10111') ||
-    line.includes('11101')
-  ) patterns.blockedFour++
-  
-  // 活三
-  if (line.includes('01110')) patterns.openThree++
-  if (countPattern(line, '01110') >= 2) patterns.doubleThree++
-  
-  // 眠三
-  if (
-    line.includes('11100') || line.includes('00111') ||
-    line.includes('11010') || line.includes('01011')
-  ) patterns.blockedThree++
-  
-  // 活二
-  if (line.includes('01100') || line.includes('00110')) patterns.openTwo++
-  
-  // 眠二
-  if (
-    line.includes('11000') || line.includes('00011') ||
-    line.includes('10100') || line.includes('00101')
-  ) patterns.blockedTwo++
 }
 
 function countPattern(str: string, pattern: string): number {

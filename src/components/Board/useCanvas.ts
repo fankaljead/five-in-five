@@ -1,12 +1,13 @@
 import { useCallback, useRef, useEffect } from 'react'
-import { type Grid } from '@/types/game'
+import { type Grid, type LastMove } from '@/types/game'
 
 interface UseCanvasProps {
   grid: Grid
+  lastMove: LastMove | null
   onMove: (row: number, col: number) => void
 }
 
-export function useCanvas({ grid, onMove }: UseCanvasProps) {
+export function useCanvas({ grid, lastMove, onMove }: UseCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null)
   const contextRef = useRef<CanvasRenderingContext2D | null>(null)
   const gridSizeRef = useRef(0)
@@ -73,7 +74,19 @@ export function useCanvas({ grid, onMove }: UseCanvasProps) {
         }
       })
     })
-  }, [grid])
+
+    // 绘制最后一步的标记
+    if (lastMove) {
+      const x = paddingRef.current + lastMove.col * gridSizeRef.current
+      const y = paddingRef.current + lastMove.row * gridSizeRef.current
+      
+      ctx.beginPath()
+      ctx.arc(x, y, gridSizeRef.current * 0.2, 0, Math.PI * 2)
+      ctx.strokeStyle = lastMove.color === 'black' ? '#fff' : '#000'
+      ctx.lineWidth = 2
+      ctx.stroke()
+    }
+  }, [grid, lastMove])
 
   const drawStone = useCallback((row: number, col: number, color: 'black' | 'white') => {
     const ctx = contextRef.current

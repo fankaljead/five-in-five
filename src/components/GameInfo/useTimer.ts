@@ -2,10 +2,17 @@ import { useState, useEffect } from 'react'
 
 interface UseTimerProps {
   isRunning: boolean
+  shouldReset?: boolean
 }
 
-export function useTimer({ isRunning }: UseTimerProps) {
+export function useTimer({ isRunning, shouldReset }: UseTimerProps) {
   const [seconds, setSeconds] = useState(0)
+
+  useEffect(() => {
+    if (shouldReset) {
+      setSeconds(0)
+    }
+  }, [shouldReset])
 
   useEffect(() => {
     if (!isRunning) return

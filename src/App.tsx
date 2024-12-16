@@ -17,6 +17,7 @@ export default function App() {
           winner={game.winner}
           gameMode={game.gameMode}
           isThinking={game.isThinking}
+          shouldResetTimer={game.shouldResetTimer}
           onModeChange={game.changeMode}
         />
         
@@ -24,6 +25,7 @@ export default function App() {
           grid={game.grid}
           currentPlayer={game.currentPlayer}
           winner={game.winner}
+          lastMove={game.lastMove}
           onMove={game.makeMove}
         />
         

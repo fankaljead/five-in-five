@@ -1,5 +1,5 @@
 import { useState, useCallback, useRef } from 'react'
-import { type Player, type GameMode, type Grid, type Position } from '../types/game'
+import { type Player, type GameMode, type Grid, type Position, type LastMove } from '../types/game'
 import { checkWin, getAIMove } from '../utils/board'
 
 const BOARD_SIZE = 15
@@ -12,6 +12,8 @@ export function useGame() {
   const [gameMode, setGameMode] = useState<GameMode>('pvp')
   const [history, setHistory] = useState<Position[]>([])
   const [isThinking, setIsThinking] = useState(false)
+  const [lastMove, setLastMove] = useState<LastMove | null>(null)
+  const [shouldResetTimer, setShouldResetTimer] = useState(false)
   
   // 使用 ref 来防止 AI 移动时的状态竞争
   const isAIMoving = useRef(false)
@@ -22,6 +24,7 @@ export function useGame() {
     const newGrid = grid.map(row => [...row])
     newGrid[row][col] = currentPlayer
     setGrid(newGrid)
+    setLastMove({ row, col, color: currentPlayer })
 
     setHistory(prev => [...prev, { row, col }])
 
@@ -47,6 +50,7 @@ export function useGame() {
           const aiGrid = newGrid.map(row => [...row])
           aiGrid[aiRow][aiCol] = 'white'
           setGrid(aiGrid)
+          setLastMove({ row: aiRow, col: aiCol, color: 'white' })
           
           setHistory(prev => [...prev, { row: aiRow, col: aiCol }])
 
@@ -88,7 +92,13 @@ export function useGame() {
     setCurrentPlayer('black')
     setWinner(null)
     setHistory([])
+    setLastMove(null)
     isAIMoving.current = false
+    setShouldResetTimer(true)
+    // 在下一帧重置标志
+    requestAnimationFrame(() => {
+      setShouldResetTimer(false)
+    })
   }, [])
 
   const changeMode = useCallback((mode: GameMode) => {
@@ -102,6 +112,8 @@ export function useGame() {
     winner,
     gameMode,
     isThinking,
+    lastMove,
+    shouldResetTimer,
     canUndo: history.length > 0 && !winner && !isAIMoving.current,
     makeMove,
     undo,

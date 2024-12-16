@@ -7,7 +7,7 @@ export interface Position {
   col: number
 }
 
-export interface Move extends Position {
+export interface LastMove extends Position {
   color: Player
 }
 
@@ -16,5 +16,5 @@ export interface GameState {
   winner: Player | null
   gameMode: GameMode
   grid: Grid
-  history: Move[]
+  history: LastMove[]
 } 

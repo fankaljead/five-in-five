@@ -7,6 +7,7 @@ interface GameInfoProps {
   winner: Player | null
   gameMode: GameMode
   isThinking: boolean
+  shouldResetTimer: boolean
   onModeChange: (mode: GameMode) => void
 }
 
@@ -15,9 +16,13 @@ export function GameInfo({
   winner, 
   gameMode, 
   isThinking,
+  shouldResetTimer,
   onModeChange 
 }: GameInfoProps) {
-  const time = useTimer({ isRunning: !winner })
+  const time = useTimer({ 
+    isRunning: !winner,
+    shouldReset: shouldResetTimer
+  })
 
   return (
     <div className="text-center space-y-4">
